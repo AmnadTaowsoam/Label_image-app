@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  pre-label-model:
+    build: ./label-model
+    ports:
+      - "${PRE_LABEL_API_PORT}:${PRE_LABEL_API_PORT}"
+    env_file:
+      - .env
+    volumes:
+      - ./label-model:/app
+    networks:
+      - label-image-net
+    depends_on:
+      - image-storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${PRE_LABEL_API_PORT}/pre_predict || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: on-failure
+
+  re-label-model:
+    build: ./label-model
+    ports:
+      - "${RE_LABEL_API_PORT}:${RE_LABEL_API_PORT}"
+    env_file:
+      - .env
+    volumes:
+      - ./label-model:/app
+    networks:
+      - label-image-net
+    depends_on:
+      - image-storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${RE_LABEL_API_PORT}/re_predict || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: on-failure
+
+  label-studio:
+    image: heartexlabs/label-studio:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - label-image-volume:/label-studio/data
+      - ./config.json:/label-studio/config.json
+    networks:
+      - label-image-net
+    depends_on:
+      - image-storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: on-failure
+
+  image-storage:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    networks:
+      - label-image-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME} -h localhost || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+
+volumes:
+  label-image-volume:
+  postgres-data:
+
+networks:
+  label-image-net:

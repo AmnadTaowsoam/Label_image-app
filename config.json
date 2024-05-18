@@ -1,0 +1,8 @@
+{
+    "DATABASE": "postgresql",
+    "DATABASE_NAME": "labelstudio",
+    "DATABASE_USER": "postgres",
+    "DATABASE_PASSWORD": "password",
+    "DATABASE_HOST": "image-storage",
+    "DATABASE_PORT": 5432
+  }
